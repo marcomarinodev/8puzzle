@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteRepositoriesConfiguration">
+    <remote-repository>
+      <option name="id" value="nexusThirdParty" />
+      <option name="name" value="nexusThirdParty" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="nexusPublic" />
+      <option name="name" value="nexusPublic" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="cat_core_tech_nexus_snapshots" />
+      <option name="name" value="Nexus Server of CAT Core Tech Snapshots" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="nexus" />
+      <option name="name" value="nexus" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Maven Central repository" />
+      <option name="url" value="https://repo1.maven.org/maven2" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="jboss.community" />
+      <option name="name" value="JBoss Community repository" />
+      <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="cat_core_nexus_releases" />
+      <option name="name" value="Nexus Server of CAT Core Releases" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="agtech_snapshots" />
+      <option name="name" value="Agtech Snapshots" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="central" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="cat_core_nexus_snapshots" />
+      <option name="name" value="Nexus Server of CAT Core Snapshots" />
+      <option name="url" value="http://pinexus01.iontrading.com:8081/nexus/content/groups/public" />
+    </remote-repository>
+  </component>
+</project>
