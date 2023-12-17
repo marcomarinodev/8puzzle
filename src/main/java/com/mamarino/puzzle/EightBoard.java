@@ -64,7 +64,7 @@ public class EightBoard extends javax.swing.JFrame {
         Collections.shuffle(newPermutation);
 
         changeSupport.firePropertyChange(
-                "restartEvent",
+                Constants.RESTART_EVT,
                 new ArrayList<>(),
                 newPermutation
         );

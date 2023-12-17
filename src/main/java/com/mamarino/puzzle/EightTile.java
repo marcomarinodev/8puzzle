@@ -1,20 +1,19 @@
 package com.mamarino.puzzle;
 
 import java.awt.Color;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyVetoException;
-import java.beans.VetoableChangeListener;
-import java.beans.VetoableChangeSupport;
+import java.beans.*;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.JButton;
 
 public class EightTile extends JButton implements PropertyChangeListener {
 
-  private final VetoableChangeSupport vChangeSupport = new VetoableChangeSupport(this);
   private Integer position;
   private Integer label;
+
+  private final VetoableChangeSupport vChangeSupport = new VetoableChangeSupport(this);
+  private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
   public EightTile() {
   }
@@ -22,46 +21,53 @@ public class EightTile extends JButton implements PropertyChangeListener {
   public EightTile(Integer position, Integer label) {
     this.label = label;
     this.position = position;
-    updateAppearence();
+    updateAppearance();
+  }
+
+  public void setLabel(Integer newLabel) {
+    Pair<Integer> oldValue = this.getValue();
+
+    if (newLabel <= 0) {
+      showError();
+      return;
+    }
+
+    try {
+      Pair<Integer> newValue = new Pair<>(this.position, newLabel);
+      vChangeSupport.fireVetoableChange(
+              "tileLabelProperty",
+              oldValue,
+              newValue
+      );
+
+      this.label = newLabel;
+      updateAppearance();
+
+      propertyChangeSupport.firePropertyChange(
+              Constants.COMPLETED_SET_LABEL_EVT,
+              oldValue,
+              newValue
+      );
+    } catch (PropertyVetoException e) {
+      showError();
+      System.out.println("VetoExc: " + e.getMessage());
+    }
   }
 
   public void onClick() {
     if (vChangeSupport == null)
       return;
 
-    System.out.println("tile on click event vChangeSupport is not null");
-
-    // * send an event to the controller
-    // * so that it can make the move check for us
-    Pair<Integer> newValue = new Pair<Integer>(position, label);
-    try {
-      vChangeSupport.fireVetoableChange(
-          "tilePositionProperty",
-          this.getValue(),
-          newValue);
-    } catch (PropertyVetoException pve) {
-      System.out.println("VetoExc: " + pve.getMessage());
-    }
+    setLabel(Constants.HOLE);
   }
-
-  public void setLabel(Integer label) {
-    if (label > 0) {
-      this.label = label;
-      updateAppearence();
-      return;
-    }
-
-    showError();
-  }
-
 
   public void setPosition(Integer position) {
     this.position = position;
   }
 
-  private void updateAppearence() {
+  private void updateAppearance() {
 
-    if (label == Constants.HOLE) {
+    if (Objects.equals(label, Constants.HOLE)) {
       System.out.println("setting " + position + " as HOLE");
       setBackground(Color.GRAY);
       setText("");
@@ -70,7 +76,7 @@ public class EightTile extends JButton implements PropertyChangeListener {
 
     setText(String.valueOf(label));
 
-    if (label == position) {
+    if (Objects.equals(label, position)) {
       setBackground(Color.GREEN);
       return;
     }
@@ -85,7 +91,7 @@ public class EightTile extends JButton implements PropertyChangeListener {
         new java.util.TimerTask() {
           @Override
           public void run() {
-            updateAppearence();
+            updateAppearance();
           }
         },
         Constants.ERR_DURATION);
@@ -100,7 +106,7 @@ public class EightTile extends JButton implements PropertyChangeListener {
   }
 
   public Pair<Integer> getValue() {
-    return new Pair<Integer>(position, label);
+    return new Pair<>(position, label);
   }
 
   @Override
@@ -114,16 +120,29 @@ public class EightTile extends JButton implements PropertyChangeListener {
   }
 
   @Override
+  public void addPropertyChangeListener(PropertyChangeListener listener) {
+    if (propertyChangeSupport != null)
+      this.propertyChangeSupport.addPropertyChangeListener(listener);
+  }
+
+  @Override
+  public void removePropertyChangeListener(PropertyChangeListener listener) {
+    this.propertyChangeSupport.removePropertyChangeListener(listener);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Override
   public void propertyChange(PropertyChangeEvent evt) {
     switch (evt.getPropertyName()) {
       case Constants.RESTART_EVT:
         List<Integer> permutation = (List<Integer>) evt.getNewValue();
         Integer newLabel = permutation.get(position - 1);
-        setLabel(newLabel);
+        this.label = newLabel;
+        updateAppearance();
 
         break;
 
-      case Constants.CLICK_TILE_EVT:
+      case Constants.SET_LABEL_EVT:
         Pair<Integer> clickedTileValue = (Pair<Integer>) evt.getNewValue();
 
         // (x,y) x = position; y = label

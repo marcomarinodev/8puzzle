@@ -31,28 +31,41 @@ public class EightController extends JLabel implements PropertyChangeListener {
       { "22", 9 },
   }).collect(Collectors.toMap(data -> (String) data[0], data -> (Integer) data[1]));
 
-  private Pair<Integer> clickedTileValue = new Pair<Integer>(0, 0);
+  private Pair<Integer> clickedTileValue = new Pair<>(0, 0);
   
   public EightController() {}
 
+  @SuppressWarnings("unchecked")
   public void setTiles(List<EightTile> tiles) {
 
     this.tiles = tiles;
 
+    // controller is listening to tiles bounded properties changes
+    tiles.forEach(tile -> tile.addPropertyChangeListener(this));
+
+    // controller is listening to tiles constrained properties changes
     listener = new VetoableChangeListener() {
       @Override
       public void vetoableChange(PropertyChangeEvent evt) throws PropertyVetoException {
+
         // position, label
-        Pair<Integer> tileToHole = (Pair<Integer>) evt.getNewValue();
+        Pair<Integer> tileChangedLabel = (Pair<Integer>) evt.getNewValue();
+        Integer tileOldLabel = ((Pair<Integer>) evt.getOldValue()).getY();
+
+        if (!Objects.equals(tileChangedLabel.getY(), Constants.HOLE)) {
+          // just change property without throwing an error
+          // as it is a consequence of an already approved move
+          return;
+        }
 
         // x, y
-        Pair<Integer> tileToHolePosition = getMatrixCoordinates(tileToHole.getX());
-        Pair<Integer> holePosition = getNearHolePosition(tileToHole.getX(), tileToHole.getY());
+        Pair<Integer> tileToHolePosition = getMatrixCoordinates(tileChangedLabel.getX());
+        Pair<Integer> holePosition = getNearHolePosition(tileChangedLabel.getX());
 
         if (holePosition == null) {
           setText("KO");
 
-          setClickedTilePosition(new Pair<Integer>(tileToHole.getX(), -1));
+          setTileLabel(new Pair<>(tileChangedLabel.getX(), -1));
 
           throw new PropertyVetoException("Cannot move this tile", evt);
         }
@@ -61,12 +74,8 @@ public class EightController extends JLabel implements PropertyChangeListener {
         setText("OK");
 
         // hole to clicked tile
-        Pair<Integer> tileChangePair = new Pair<Integer>(getBoardPosition(holePosition), tileToHole.getY());
-        setClickedTilePosition(tileChangePair);
-
-        // clicked tile to hole
-        Pair<Integer> holeChangePair = new Pair<Integer>(tileToHole.getX(), Constants.HOLE);
-        setClickedTilePosition(holeChangePair);
+        Pair<Integer> tileChangePair = new Pair<>(getBoardPosition(holePosition), tileOldLabel);
+        setTileLabel(tileChangePair);
 
         // updating the board
         updateBoard(tileToHolePosition, holePosition);
@@ -129,16 +138,16 @@ public class EightController extends JLabel implements PropertyChangeListener {
     board.get(holeRow).set(holeCol, temp);
   }
 
-  private Pair<Integer> getNearHolePosition(Integer position, Integer label) {
+  private Pair<Integer> getNearHolePosition(Integer position) {
     Pair<Integer> mCoordinates = getMatrixCoordinates(position);
     List<Pair<Integer>> possibleMoves = new ArrayList<>();
     Integer i = mCoordinates.getX();
     Integer j = mCoordinates.getY();
 
-    possibleMoves.add(new Pair<Integer>(i - 1, j));
-    possibleMoves.add(new Pair<Integer>(i + 1, j));
-    possibleMoves.add(new Pair<Integer>(i, j - 1));
-    possibleMoves.add(new Pair<Integer>(i, j + 1));
+    possibleMoves.add(new Pair<>(i - 1, j));
+    possibleMoves.add(new Pair<>(i + 1, j));
+    possibleMoves.add(new Pair<>(i, j - 1));
+    possibleMoves.add(new Pair<>(i, j + 1));
 
     Optional<Pair<Integer>> nearHole = possibleMoves
         .stream()
@@ -164,7 +173,7 @@ public class EightController extends JLabel implements PropertyChangeListener {
   }
 
   private Pair<Integer> getMatrixCoordinates(Integer position) {
-    return new Pair<>((int) Math.floor((position - 1) / Constants.MAX_DIM), (position - 1) % 3);
+    return new Pair<>((int) Math.floor((double) (position - 1) / Constants.MAX_DIM), (position - 1) % 3);
   }
 
   private Integer getBoardPosition(Pair<Integer> coordinates) {
@@ -172,16 +181,17 @@ public class EightController extends JLabel implements PropertyChangeListener {
     return this.coordinates.get(key);
   }
 
-  public void setClickedTilePosition(Pair<Integer> newClickedTileValue) {
+  public void setTileLabel(Pair<Integer> newClickedTileValue) {
     Pair<Integer> oldClickedTileValue = clickedTileValue;
     clickedTileValue = newClickedTileValue;
 
     changes.firePropertyChange(
-        Constants.CLICK_TILE_EVT,
+        Constants.SET_LABEL_EVT,
         oldClickedTileValue,
         newClickedTileValue);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
     switch (evt.getPropertyName()) {
@@ -200,23 +210,30 @@ public class EightController extends JLabel implements PropertyChangeListener {
           Integer labelIn1 = board.get(0).get(0);
           Integer labelIn2 = board.get(0).get(1);
 
-          Pair<Integer> tile1 = new Pair<Integer>(1, labelIn2);
-          Pair<Integer> tile2 = new Pair<Integer>(2, labelIn1);
+          Pair<Integer> tile1 = new Pair<>(1, labelIn2);
+          Pair<Integer> tile2 = new Pair<>(2, labelIn1);
 
           board.get(0).set(0, labelIn2);
           board.get(0).set(1, labelIn1);
 
           changes.firePropertyChange(
-              Constants.CLICK_TILE_EVT,
-              new Pair<Integer>(-1, -1),
+              Constants.SET_LABEL_EVT,
+              new Pair<>(-1, -1), // dummy old value
               tile1);
 
           changes.firePropertyChange(
-                  Constants.CLICK_TILE_EVT,
-              new Pair<Integer>(-1, -1),
+                  Constants.SET_LABEL_EVT,
+              new Pair<>(-1, -1), // dummy old value
               tile2);
         }
         break;
+
+      case Constants.COMPLETED_SET_LABEL_EVT:
+
+        String oldValueStr = evt.getOldValue().toString();
+        String newValueStr = evt.getNewValue().toString();
+
+        System.out.println("completed set label from value " + oldValueStr + " to " + newValueStr);
       default:
         break;
     }
