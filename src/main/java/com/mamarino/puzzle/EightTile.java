@@ -97,14 +97,6 @@ public class EightTile extends JButton implements PropertyChangeListener {
         Constants.ERR_DURATION);
   }
 
-  public Integer getPosition() {
-    return position;
-  }
-
-  public Integer getInternalLabel() {
-    return label;
-  }
-
   public Pair<Integer> getValue() {
     return new Pair<>(position, label);
   }

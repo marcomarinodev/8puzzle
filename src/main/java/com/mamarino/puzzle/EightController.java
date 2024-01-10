@@ -11,13 +11,10 @@ import java.util.stream.Stream;
 
 import javax.swing.JLabel;
 
-public class EightController extends JLabel implements PropertyChangeListener {
+public class EightController extends JLabel implements PropertyChangeListener, VetoableChangeListener {
 
   private final PropertyChangeSupport changes = new PropertyChangeSupport(this);
-
-  private VetoableChangeListener listener;
   private List<List<Integer>> board;
-  private List<EightTile> tiles;
 
   private final Map<String, Integer> coordinates = Stream.of(new Object[][] {
       { "00", 1 },
@@ -36,79 +33,46 @@ public class EightController extends JLabel implements PropertyChangeListener {
   public EightController() {}
 
   @SuppressWarnings("unchecked")
-  public void setTiles(List<EightTile> tiles) {
+  @Override
+  public void vetoableChange(PropertyChangeEvent evt) throws PropertyVetoException {
+    // position, label
+    Pair<Integer> tileChangedLabel = (Pair<Integer>) evt.getNewValue();
+    Integer tileOldLabel = ((Pair<Integer>) evt.getOldValue()).getY();
 
-    this.tiles = tiles;
+    if (!Objects.equals(tileChangedLabel.getY(), Constants.HOLE)) {
+      // just change property without throwing an error
+      // as it is a consequence of an already approved move
+      return;
+    }
 
-    // controller is listening to tiles bounded properties changes
-    tiles.forEach(tile -> tile.addPropertyChangeListener(this));
+    // x, y
+    Pair<Integer> tileToHolePosition = getMatrixCoordinates(tileChangedLabel.getX());
+    Pair<Integer> holePosition = getNearHolePosition(tileChangedLabel.getX());
 
-    // controller is listening to tiles constrained properties changes
-    listener = new VetoableChangeListener() {
-      @Override
-      public void vetoableChange(PropertyChangeEvent evt) throws PropertyVetoException {
+    if (holePosition == null) {
+      setText("KO");
 
-        // position, label
-        Pair<Integer> tileChangedLabel = (Pair<Integer>) evt.getNewValue();
-        Integer tileOldLabel = ((Pair<Integer>) evt.getOldValue()).getY();
+      setTileLabel(new Pair<>(tileChangedLabel.getX(), -1));
 
-        if (!Objects.equals(tileChangedLabel.getY(), Constants.HOLE)) {
-          // just change property without throwing an error
-          // as it is a consequence of an already approved move
-          return;
-        }
+      throw new PropertyVetoException("Cannot move this tile", evt);
+    }
 
-        // x, y
-        Pair<Integer> tileToHolePosition = getMatrixCoordinates(tileChangedLabel.getX());
-        Pair<Integer> holePosition = getNearHolePosition(tileChangedLabel.getX());
+    System.out.println("Veto passed! :)");
+    setText("OK");
 
-        if (holePosition == null) {
-          setText("KO");
+    // hole to clicked tile
+    Pair<Integer> tileChangePair = new Pair<>(getBoardPosition(holePosition), tileOldLabel);
+    setTileLabel(tileChangePair);
 
-          setTileLabel(new Pair<>(tileChangedLabel.getX(), -1));
+    // updating the board
+    updateBoard(tileToHolePosition, holePosition);
 
-          throw new PropertyVetoException("Cannot move this tile", evt);
-        }
-
-        System.out.println("Veto passed! :)");
-        setText("OK");
-
-        // hole to clicked tile
-        Pair<Integer> tileChangePair = new Pair<>(getBoardPosition(holePosition), tileOldLabel);
-        setTileLabel(tileChangePair);
-
-        // updating the board
-        updateBoard(tileToHolePosition, holePosition);
-
-        // check win
-        if (checkVictory()) setText("YOU WON!");
-      }
-    };
-  }
-
-  public void addPropertyChangeListener(PropertyChangeListener listener) {
-    if (changes != null)
-      this.changes.addPropertyChangeListener(listener);
-  }
-
-  public void removePropertyChangeListener(PropertyChangeListener listener) {
-    this.changes.removePropertyChangeListener(listener);
+    // check win
+    if (checkVictory()) setText("YOU WON!");
   }
 
   private void initController(List<Integer> permutation) {
     board = generateBoard(permutation);
-
-    for (EightTile tile : tiles) {
-      // remove vetoable change listener if any
-      tile.removeVetoableChangeListener(listener);
-      // sets this controller as listener of proposed new tile position (veto)
-      tile.addVetoableChangeListener(listener);
-
-      // remove any property change listener related to the current tile
-      removePropertyChangeListener(tile);
-      // tile listens to 'changes' property change
-      addPropertyChangeListener(tile);
-    }
   }
 
   private List<List<Integer>> generateBoard(List<Integer> permutation) {
@@ -246,6 +210,15 @@ public class EightController extends JLabel implements PropertyChangeListener {
         Arrays.asList(7, 8, 9));
 
     return board.equals(targetList);
+  }
+
+  public void addPropertyChangeListener(PropertyChangeListener listener) {
+    if (changes != null)
+      this.changes.addPropertyChangeListener(listener);
+  }
+
+  public void removePropertyChangeListener(PropertyChangeListener listener) {
+    this.changes.removePropertyChangeListener(listener);
   }
 
 }
