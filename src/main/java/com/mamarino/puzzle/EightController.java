@@ -16,6 +16,7 @@ public class EightController extends JLabel implements PropertyChangeListener, V
   private final PropertyChangeSupport changes = new PropertyChangeSupport(this);
   private List<List<Integer>> board;
 
+  // structure to for mapping coordinates (00, ..., 22) to linear values (1, ..., 9)
   private final Map<String, Integer> coordinates = Stream.of(new Object[][] {
       { "00", 1 },
       { "01", 2 },
@@ -32,6 +33,13 @@ public class EightController extends JLabel implements PropertyChangeListener, V
   
   public EightController() {}
 
+  /**
+   * it checks whether the move made is legal or not, it's being triggered whenever a tile is pressed
+   * then the controller has to check the move update the board accordingly
+   * @param evt a {@code PropertyChangeEvent} object describing the
+   *                event source and the property that has changed.
+   * @throws PropertyVetoException launched when the movement is not allowed
+   */
   @SuppressWarnings("unchecked")
   @Override
   public void vetoableChange(PropertyChangeEvent evt) throws PropertyVetoException {
@@ -45,13 +53,16 @@ public class EightController extends JLabel implements PropertyChangeListener, V
       return;
     }
 
-    // x, y
+    // pair: (x, y)
     Pair<Integer> tileToHolePosition = getMatrixCoordinates(tileChangedLabel.getX());
     Pair<Integer> holePosition = getNearHolePosition(tileChangedLabel.getX());
 
+    // if a hole is not found then it means we cannot move that tile
     if (holePosition == null) {
       setText("KO");
 
+      // -1 means this tile is temporary on error state
+      // a new event is sent to the corresponding tile
       setTileLabel(new Pair<>(tileChangedLabel.getX(), -1));
 
       throw new PropertyVetoException("Cannot move this tile", evt);
@@ -60,7 +71,7 @@ public class EightController extends JLabel implements PropertyChangeListener, V
     System.out.println("Veto passed! :)");
     setText("OK");
 
-    // hole to clicked tile
+    // clicked tile becomes the new hole
     Pair<Integer> tileChangePair = new Pair<>(getBoardPosition(holePosition), tileOldLabel);
     setTileLabel(tileChangePair);
 
@@ -71,10 +82,19 @@ public class EightController extends JLabel implements PropertyChangeListener, V
     if (checkVictory()) setText("YOU WON!");
   }
 
+  /**
+   * controller initialization phase where the board is filled with a permutation
+   * @param permutation input permutation
+   */
   private void initController(List<Integer> permutation) {
     board = generateBoard(permutation);
   }
 
+  /**
+   * it takes an integer permutation and transform it into a 3x3 matrix
+   * @param permutation
+   * @return 3x3 matrix representing the board state
+   */
   private List<List<Integer>> generateBoard(List<Integer> permutation) {
     List<List<Integer>> newBoard = new ArrayList<>();
     List<Integer> row = new ArrayList<>();
@@ -91,6 +111,11 @@ public class EightController extends JLabel implements PropertyChangeListener, V
     return newBoard;
   }
 
+  /**
+   * it updates the board by swapping the tile to be moved and the "hole" tile
+   * @param currentTilePosition coordinates of the tile to be moved
+   * @param holeTilePosition coordinates of the "hole" tile
+   */
   private void updateBoard(Pair<Integer> currentTilePosition, Pair<Integer> holeTilePosition) {
     int tileRow = currentTilePosition.getX();
     int tileCol = currentTilePosition.getY();
@@ -102,6 +127,12 @@ public class EightController extends JLabel implements PropertyChangeListener, V
     board.get(holeRow).set(holeCol, temp);
   }
 
+  /**
+   * it returns the nearest hole tile by looking at top, left, right and bottom of the
+   * position passed by parameter
+   * @param position integer value representing the position (f.i, 4 -> (1,0))
+   * @return coordinates of the nearest hole tile starting from 'position'; if no hole is found, it returns null
+   */
   private Pair<Integer> getNearHolePosition(Integer position) {
     Pair<Integer> mCoordinates = getMatrixCoordinates(position);
     List<Pair<Integer>> possibleMoves = new ArrayList<>();
@@ -123,6 +154,10 @@ public class EightController extends JLabel implements PropertyChangeListener, V
 
   }
 
+  /**
+   * it checks if the flip move is possible
+   * @return boolean: true -> flip move is possible; not otherwise
+   */
   private boolean checkFlipMove() {
     // make sure that the tile in position 1 and 2 are not holes
     // and hole is in position 9
@@ -131,20 +166,39 @@ public class EightController extends JLabel implements PropertyChangeListener, V
         && Objects.equals(board.get(2).get(2), Constants.HOLE);
   }
 
+  /**
+   * ti checks that the passing coordinate 'point' is a coordinate within the board bounds
+   * @param point coordinate to be checked
+   * @return boolean: true -> the point is within the board; not otherwise
+   */
   private boolean isLegalCoordinate(Pair<Integer> point) {
     return point.getX() >= 0 && point.getX() < Constants.MAX_DIM &&
         point.getY() >= 0 && point.getY() < Constants.MAX_DIM;
   }
 
+  /**
+   * retrieve coordinates from position (f.i, position=6 -> returns (1,2))
+   * @param position integer position (1,...,9)
+   * @return coordinates as (Integer, Integer)
+   */
   private Pair<Integer> getMatrixCoordinates(Integer position) {
-    return new Pair<>((int) Math.floor((double) (position - 1) / Constants.MAX_DIM), (position - 1) % 3);
+    // we are assuming as a pre-condition that position is a number from 1 to 9
+    // therefore the findFirst() returns always an Optional value that is always present
+    String foundKey = coordinates.entrySet()
+            .stream()
+            .filter(entry -> Objects.equals(entry.getValue(), position))
+            .map(Map.Entry::getKey)
+            .findFirst().get();
+
+    return getCoordinatesFromString(foundKey);
   }
 
-  private Integer getBoardPosition(Pair<Integer> coordinates) {
-    String key = coordinates.toString();
-    return this.coordinates.get(key);
-  }
-
+  /**
+   * it sets the tile label by firing a SET_LABEL_EVT. The tile catching the event
+   * must check whether it is the tile to be changed or not by checking the tile value
+   * passed by the sending event
+   * @param newClickedTileValue pair (position, value) (f.i, (3, 8) means that tile in position 3 has label '8')
+   */
   public void setTileLabel(Pair<Integer> newClickedTileValue) {
     Pair<Integer> oldClickedTileValue = clickedTileValue;
     clickedTileValue = newClickedTileValue;
@@ -155,6 +209,12 @@ public class EightController extends JLabel implements PropertyChangeListener, V
         newClickedTileValue);
   }
 
+  /**
+   * controller is registered to events fired by the EightBoard class: RESTART_EVT and FLIP_EVT
+   * are being caught to handle restart and flip movements respectively
+   * @param evt A PropertyChangeEvent object describing the event source
+   *          and the property that has changed.
+   */
   @SuppressWarnings("unchecked")
   @Override
   public void propertyChange(PropertyChangeEvent evt) {
@@ -191,25 +251,30 @@ public class EightController extends JLabel implements PropertyChangeListener, V
               tile2);
         }
         break;
-
-      case Constants.COMPLETED_SET_LABEL_EVT:
-
-        String oldValueStr = evt.getOldValue().toString();
-        String newValueStr = evt.getNewValue().toString();
-
-        System.out.println("completed set label from value " + oldValueStr + " to " + newValueStr);
       default:
         break;
     }
   }
 
   public boolean checkVictory() {
-    List<List<Integer>> targetList = Arrays.asList(
-        Arrays.asList(1, 2, 3),
-        Arrays.asList(4, 5, 6),
-        Arrays.asList(7, 8, 9));
+    List<List<Integer>> targetBoard = generateBoard(List.of(1,2,3,4,5,6,7,8,9));
+    return board.equals(targetBoard);
+  }
 
-    return board.equals(targetList);
+  private Pair<Integer> getCoordinatesFromString(String coordinatesStr) {
+    if (coordinatesStr.length() != 2) {
+      throw new IllegalArgumentException("Input string must have exactly two characters.");
+    }
+
+    int row = Character.getNumericValue(coordinatesStr.charAt(0));
+    int col = Character.getNumericValue(coordinatesStr.charAt(1));
+
+    return new Pair<>(row, col);
+  }
+
+  private Integer getBoardPosition(Pair<Integer> coordinates) {
+    String key = coordinates.toString();
+    return this.coordinates.get(key);
   }
 
   public void addPropertyChangeListener(PropertyChangeListener listener) {

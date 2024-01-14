@@ -7,5 +7,4 @@ public class Constants {
     public static final String RESTART_EVT = "restartEvent";
     public static final String FLIP_EVT = "flipEvent";
     public static final String SET_LABEL_EVT = "setLabelEvent";
-    public static final String COMPLETED_SET_LABEL_EVT = "completedSetLabelProperty";
 }

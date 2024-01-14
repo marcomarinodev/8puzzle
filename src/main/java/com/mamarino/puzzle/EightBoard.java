@@ -48,14 +48,16 @@ public class EightBoard extends javax.swing.JFrame {
             // the controller listens to this tile for a vetoable change
             tile.addVetoableChangeListener(eightController);
 
-            // this tile is listening to new 'changeSupport' new events to be fired
+            // this tile is listening to new 'changeSupport' events to be fired
             addPropertyChangeListener(tile);
 
+            // this tile listens to controller's property changes  
             eightController.addPropertyChangeListener(tile);
 
             tile.addActionListener(_e -> tile.onClick());
         }
 
+        // controller listens to EightBoard's property changes 
         addPropertyChangeListener(eightController);
 
         resetTilesPosition();
